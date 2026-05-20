@@ -50,7 +50,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.4"
+        kotlinCompilerExtensionVersion = "1.5.10"
     }
 
     packagingOptions {
@@ -93,10 +93,10 @@ dependencies {
     implementation("androidx.media3:media3-common:1.2.0")
 
     // WebRTC
-    implementation("org.webrtc:google-webrtc:1.0.32006")
+    implementation("io.github.webrtc-sdk:android:125.6422.06")
 
     // Firebase
-    implementation("com.google.firebase:firebase-bom:32.7.0")
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-database-ktx")
     implementation("com.google.firebase:firebase-auth-ktx")

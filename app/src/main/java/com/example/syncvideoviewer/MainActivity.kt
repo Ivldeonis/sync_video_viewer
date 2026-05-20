@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             SyncVideoViewerTheme {
-                SyncVideoViewerApp()
+                SyncVideoViewerMainApp()
             }
         }
 
@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun SyncVideoViewerApp() {
+fun SyncVideoViewerMainApp() {
     val navController = rememberNavController()
 
     Surface(

@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
     - uses: actions/checkout@v4
@@ -30,10 +32,8 @@ jobs:
         if [ ! -z "$GOOGLE_SERVICES_JSON" ]; then
           echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
         else
-          echo "GOOGLE_SERVICES_JSON secret is not set, skipping..."
-          # We might want to create a dummy one if the build fails without it,
-          # but usually the google-services plugin allows it to be missing if not used,
-          # or it fails fast. The user should provide it as a secret.
+          echo "GOOGLE_SERVICES_JSON secret is not set, creating dummy file..."
+          echo '{"project_info":{"project_number":"123456789","project_id":"dummy-id"},"client":[{"client_info":{"mobilesdk_app_id":"1:123456789:android:123456789","android_client_info":{"package_name":"com.example.syncvideoviewer"}},"api_key":[{"current_key":"dummy-key"}],"services":{"appinvite_service":{"status":1,"other_platform_oauth_client":[]},"ads_service":{"status":1}}}],"configuration_version":"1"}' > app/google-services.json
         fi
 
     - name: Build with Gradle

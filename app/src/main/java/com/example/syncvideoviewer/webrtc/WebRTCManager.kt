@@ -2,63 +2,39 @@ package com.example.syncvideoviewer.webrtc
 
 import android.content.Context
 import android.util.Log
-import com.example.syncvideoviewer.data.repository.FirebaseRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import com.google.gson.Gson
 import org.webrtc.*
-import javax.inject.Inject
-import javax.inject.Singleton
+import java.nio.ByteBuffer
 
-@Singleton
-class WebRTCManager @Inject constructor(
+class WebRTCManager(
     private val context: Context,
-    private val firebaseRepository: FirebaseRepository
+    private val gson: Gson
 ) {
-
     private var peerConnectionFactory: PeerConnectionFactory? = null
     private var peerConnection: PeerConnection? = null
-    private var dataChannel: DataChannel? = null
     private var localDataChannel: DataChannel? = null
 
-    private val coroutineScope = CoroutineScope(Dispatchers.Default)
-
-    companion object {
-        private const val TAG = "WebRTCManager"
-    }
+    private val TAG = "WebRTCManager"
 
     init {
-        initWebRTC()
+        initPeerConnectionFactory()
     }
 
-    private fun initWebRTC() {
-        try {
-            PeerConnectionFactory.initialize(
-                PeerConnectionFactory.InitializationOptions.builder(context)
-                    .setFieldTrials("WebRTC-H264HighProfile/Enabled/")
-                    .createInitializationOptions()
-            )
+    private fun initPeerConnectionFactory() {
+        val options = PeerConnectionFactory.InitializationOptions.builder(context)
+            .setEnableInternalTracer(true)
+            .createInitializationOptions()
+        PeerConnectionFactory.initialize(options)
 
-            val options = PeerConnectionFactory.Options()
-            peerConnectionFactory = PeerConnectionFactory.builder()
-                .setOptions(options)
-                .setVideoEncoderFactory(DefaultVideoEncoderFactory(
-                    null,
-                    true,
-                    true
-                ))
-                .setVideoDecoderFactory(DefaultVideoDecoderFactory(null))
-                .createPeerConnectionFactory()
-
-            Log.d(TAG, "WebRTC initialized successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize WebRTC", e)
-        }
+        val factoryOptions = PeerConnectionFactory.Options()
+        peerConnectionFactory = PeerConnectionFactory.builder()
+            .setOptions(factoryOptions)
+            .createPeerConnectionFactory()
     }
 
     fun createPeerConnection(
         roomId: String,
-        onIceCandidateListener: (ICECandidateListener) -> Unit
+        onIceCandidateListener: (IceCandidate) -> Unit
     ) {
         try {
             val iceServers = listOf(
@@ -67,7 +43,7 @@ class WebRTCManager @Inject constructor(
             )
 
             val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
-                iceTransportPolicy = PeerConnection.IceTransportPolicy.ALL
+                iceTransportsType = PeerConnection.IceTransportsType.ALL
                 bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE
                 rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE
             }
@@ -80,30 +56,17 @@ class WebRTCManager @Inject constructor(
                     }
 
                     override fun onIceConnectionChange(p0: PeerConnection.IceConnectionState?) {
-                        Log.d(TAG, "ICE connection state: ${p0?.name}")
+                        Log.d(TAG, "Ice connection state: ${p0?.name}")
                     }
 
                     override fun onIceConnectionReceivingChange(p0: Boolean) {}
 
                     override fun onIceGatheringChange(p0: PeerConnection.IceGatheringState?) {
-                        Log.d(TAG, "ICE gathering state: ${p0?.name}")
+                        Log.d(TAG, "Ice gathering state: ${p0?.name}")
                     }
 
-                    override fun onIceCandidate(iceCandidate: IceCandidate?) {
-                        iceCandidate?.let {
-                            Log.d(TAG, "New ICE candidate: ${it.sdp}")
-                            coroutineScope.launch {
-                                firebaseRepository.addICECandidate(
-                                    roomId,
-                                    firebaseRepository.getCurrentUserId(),
-                                    com.example.syncvideoviewer.data.model.ICECandidate(
-                                        candidate = it.sdp,
-                                        sdpMLineIndex = it.sdpMLineIndex,
-                                        sdpMid = it.sdpMid
-                                    )
-                                )
-                            }
-                        }
+                    override fun onIceCandidate(p0: IceCandidate?) {
+                        p0?.let { onIceCandidateListener(it) }
                     }
 
                     override fun onIceCandidatesRemoved(p0: Array<out IceCandidate>?) {}
@@ -112,21 +75,14 @@ class WebRTCManager @Inject constructor(
 
                     override fun onRemoveStream(p0: MediaStream?) {}
 
-                    override fun onDataChannel(dataChannel: DataChannel?) {
-                        Log.d(TAG, "Data channel received")
-                        this@WebRTCManager.dataChannel = dataChannel
-                        setupDataChannelListeners(dataChannel)
+                    override fun onDataChannel(p0: DataChannel?) {
+                        Log.d(TAG, "On data channel: ${p0?.label()}")
+                        setupDataChannelListeners(p0)
                     }
 
-                    override fun onRenegotiationNeeded() {
-                        Log.d(TAG, "Renegotiation needed")
-                    }
+                    override fun onRenegotiationNeeded() {}
 
-                    override fun onAddTrack(
-                        p0: RtpReceiver?,
-                        p1: Array<out MediaStream>?
-                    ) {
-                    }
+                    override fun onAddTrack(p0: RtpReceiver?, p1: Array<out MediaStream>?) {}
 
                     override fun onTrack(p0: RtpTransceiver?) {}
 
@@ -135,8 +91,6 @@ class WebRTCManager @Inject constructor(
                     }
 
                     override fun onStandardizedIceConnectionChange(p0: PeerConnection.IceConnectionState?) {}
-
-                    override fun onStandardizedIceGatheringChange(p0: PeerConnection.IceGatheringState?) {}
                 }
             )
 
@@ -151,83 +105,17 @@ class WebRTCManager @Inject constructor(
         }
     }
 
-    fun createOffer() {
-        peerConnection?.createOffer(
-            object : SdpObserver {
-                override fun onCreateSuccess(sessionDescription: SessionDescription?) {
-                    peerConnection?.setLocalDescription(this, sessionDescription)
-                    Log.d(TAG, "Offer created successfully")
-                }
-
-                override fun onSetSuccess() {
-                    Log.d(TAG, "Local description set successfully")
-                }
-
-                override fun onCreateFailure(p0: String?) {
-                    Log.e(TAG, "Offer creation failed: $p0")
-                }
-
-                override fun onSetFailure(p0: String?) {
-                    Log.e(TAG, "Set description failed: $p0")
-                }
-            },
-            MediaConstraints()
-        )
-    }
-
-    fun createAnswer() {
-        peerConnection?.createAnswer(
-            object : SdpObserver {
-                override fun onCreateSuccess(sessionDescription: SessionDescription?) {
-                    peerConnection?.setLocalDescription(this, sessionDescription)
-                    Log.d(TAG, "Answer created successfully")
-                }
-
-                override fun onSetSuccess() {
-                    Log.d(TAG, "Local description set successfully")
-                }
-
-                override fun onCreateFailure(p0: String?) {
-                    Log.e(TAG, "Answer creation failed: $p0")
-                }
-
-                override fun onSetFailure(p0: String?) {
-                    Log.e(TAG, "Set description failed: $p0")
-                }
-            },
-            MediaConstraints()
-        )
-    }
-
-    fun setRemoteDescription(sdp: String, type: String) {
-        val sessionDescription = SessionDescription(
-            SessionDescription.Type.fromCanonicalForm(type),
-            sdp
-        )
-        peerConnection?.setRemoteDescription(object : SdpObserver {
-            override fun onCreateSuccess(p0: SessionDescription?) {}
-            override fun onSetSuccess() {
-                Log.d(TAG, "Remote description set successfully")
-            }
-
-            override fun onCreateFailure(p0: String?) {}
-            override fun onSetFailure(p0: String?) {
-                Log.e(TAG, "Set remote description failed: $p0")
-            }
-        }, sessionDescription)
-    }
-
-    private fun setupDataChannelListeners(channel: DataChannel?) {
-        channel?.registerObserver(object : DataChannel.Observer {
-            override fun onBufferedAmountChange(previousAmount: Long) {}
+    private fun setupDataChannelListeners(dataChannel: DataChannel?) {
+        dataChannel?.registerObserver(object : DataChannel.Observer {
+            override fun onBufferedAmountChange(p0: Long) {}
 
             override fun onStateChange() {
-                Log.d(TAG, "Data channel state: ${channel.state()}")
+                Log.d(TAG, "Data channel state change: ${dataChannel?.state()}")
             }
 
-            override fun onMessage(buffer: DataChannel.Buffer?) {
-                buffer?.data?.let {
-                    val message = String(it.array())
+            override fun onMessage(p0: DataChannel.Buffer?) {
+                p0?.let {
+                    val message = String(it.data.array())
                     Log.d(TAG, "Data channel message: $message")
                 }
             }
@@ -238,7 +126,7 @@ class WebRTCManager @Inject constructor(
         try {
             localDataChannel?.let {
                 val buffer = DataChannel.Buffer(
-                    org.webrtc.DataChannel.ByteBufferFactory(message.toByteArray()),
+                    ByteBuffer.wrap(message.toByteArray()),
                     false
                 )
                 it.send(buffer)
@@ -251,17 +139,11 @@ class WebRTCManager @Inject constructor(
 
     fun close() {
         try {
-            localDataChannel?.close()
-            dataChannel?.close()
+            localDataChannel?.dispose()
             peerConnection?.close()
-            peerConnection = null
-            Log.d(TAG, "WebRTC connection closed")
+            peerConnectionFactory?.dispose()
         } catch (e: Exception) {
-            Log.e(TAG, "Error closing WebRTC connection", e)
+            Log.e(TAG, "Error closing WebRTCManager", e)
         }
     }
-}
-
-interface ICECandidateListener {
-    fun onIceCandidate(candidate: IceCandidate)
 }
