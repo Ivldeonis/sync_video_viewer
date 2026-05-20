@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sync Video Viewer</string>
+    <string name="create_room">Створити кімнату</string>
+    <string name="join_room">Приєднатися до кімнати</string>
+    <string name="room_name">Назва кімнати</string>
+    <string name="video_url">URL HLS-потоку</string>
+    <string name="is_private">Приватна кімната</string>
+    <string name="access_code">Код доступу</string>
+    <string name="search_rooms">Пошук кімнат...</string>
+    <string name="no_rooms">Немає кімнат</string>
+    <string name="participants">Учасників</string>
+    <string name="play">Відтворити</string>
+    <string name="pause">Пауза</string>
+    <string name="messages">Повідомлення</string>
+    <string name="send">Надіслати</string>
+    <string name="exit">Вихід</string>
+    <string name="sync_status">Статус синхронізації</string>
+    <string name="connected">Підключено</string>
+    <string name="fallback">Резервний канал</string>
+    <string name="disconnected">Розключено</string>
+    <string name="leader">Лідер</string>
+    <string name="viewer">Глядач</string>
+    <string name="loading">Завантаження...</string>
+    <string name="error">Помилка</string>
+    <string name="cancel">Скасувати</string>
+    <string name="ok">ОК</string>
+    <string name="back">Назад</string>
+</resources>
