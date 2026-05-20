@@ -14,18 +14,13 @@
     </style>
 
     <!-- Netflix-inspired dark theme -->
-    <style name="NetflixDarkTheme" parent="Theme.MaterialComponents.NoActionBar">
+    <style name="NetflixDarkTheme" parent="Theme.AppCompat.NoActionBar">
         <item name="colorPrimary">#E50914</item>
-        <item name="colorPrimaryVariant">#831010</item>
         <item name="colorSecondary">#221A1F</item>
-        <item name="colorSecondaryVariant">#403638</item>
-        <item name="colorBackground">#141414</item>
-        <item name="colorSurface">#221A1F</item>
-        <item name="colorError">#B3261E</item>
+        <item name="android:colorBackground">#141414</item>
         <item name="colorOnPrimary">@android:color/white</item>
         <item name="colorOnSecondary">@android:color/white</item>
         <item name="colorOnBackground">@android:color/white</item>
         <item name="colorOnSurface">@android:color/white</item>
-        <item name="colorOnError">@android:color/white</item>
     </style>
 </resources>
